@@ -1,0 +1,11 @@
+
+order_id,order_date,customer_name,product,category,quantity,price,city
+2001,2026-02-01,Rahul,Laptop,Electronics,2,45000,Chennai
+2002,2026-02-02,,Mouse,Accessories,3,500,Bangalore
+2003,INVALID_DATE,Priya,Keyboard,Accessories,2,1200,Coimbatore
+2004,2026-02-04,Kumar,Monitor,Electronics,-1,12000,Chennai
+2005,2026-02-05,Divya,Mobile,Electronics,2,-15000,Madurai
+2001,2026-02-01,Rahul,Laptop,Electronics,2,45000,Chennai
+2006,2026-02-06,Arun,Mouse,Accessories,,500,Bangalore
+2007,2026-02-07,Suresh,Laptop,Electronics,ABC,45000,Chennai
+2008,2026-02-08,Meena,Mobile,Electronics,2,UNKNOWN,Madurai

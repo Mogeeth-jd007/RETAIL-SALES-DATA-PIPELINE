@@ -1,0 +1,2 @@
+order_id,order_date,customer_name,product,category,quantity,price,city,total_amount,status
+2001,2026-02-01,Rahul,Laptop,Electronics,2.0,45000.0,Chennai,90000.0,VALID

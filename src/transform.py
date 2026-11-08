@@ -7,17 +7,27 @@ from extract import extract_data
 
 def transform_data(df):
 
-    # Remove unnecessary spaces from column names
+    # Work on a copy of the original data
+    df = df.copy()
+
+    # 1. Clean column names
     df.columns = df.columns.str.strip().str.lower()
 
-    # Remove duplicate orders
-    df = df.drop_duplicates(subset=["order_id"])
-
-    # Clean text columns
+    # 2. Clean text columns without deleting missing values
     for column in ["customer_name", "product", "category", "city"]:
-        df[column] = df[column].astype("string").str.strip()
 
-    # Convert columns into correct data types
+        df[column] = (
+            df[column]
+            .astype("string")
+            .str.strip()
+        )
+
+    # Convert empty strings into missing values
+    for column in ["customer_name", "product", "category", "city"]:
+
+        df[column] = df[column].replace("", pd.NA)
+
+    # 3. Convert data types
     df["order_date"] = pd.to_datetime(
         df["order_date"], errors="coerce"
     )
@@ -30,15 +40,11 @@ def transform_data(df):
         df["price"], errors="coerce"
     )
 
-    # Remove records with missing essential values
-    df = df.dropna(
-        subset=["order_id", "order_date", "product", "quantity", "price"]
-    )
-
-    # Calculate total sales
+    # 4. Calculate total sales
     df["total_amount"] = df["quantity"] * df["price"]
 
     print("Data transformation completed!")
+    print("Records preserved:", len(df))
 
     return df
 
@@ -53,11 +59,13 @@ if __name__ == "__main__":
 
     # Create processed folder
     project_dir = Path(__file__).resolve().parent.parent
+
     output_dir = project_dir / "data" / "processed"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save transformed data
     output_file = output_dir / "cleaned_retail_sales.csv"
+
     cleaned_data.to_csv(output_file, index=False)
 
     print("\nTransformed data:")

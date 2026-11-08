@@ -1,0 +1,2 @@
+order_id,order_date,customer_name,product,category,quantity,price,city,total_amount,status
+2002,2026-02-02,,Mouse,Accessories,3.0,500.0,Bangalore,1500.0,WARNING
