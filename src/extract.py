@@ -1,38 +1,53 @@
 
 import pandas as pd
 from pathlib import Path
+
 from config import load_config
+from logger import get_logger
+
+
+logger = get_logger("EXTRACT")
 
 
 def extract_data(filename=None):
 
-    # Load project configuration
-    config = load_config()
+    try:
 
-    # Locate the project directory
-    project_dir = Path(__file__).resolve().parent.parent
+        # Load project configuration
+        config = load_config()
 
-    # Get filename from configuration
-    if filename is None:
-        filename = config["input_file"]
+        # Locate the project directory
+        project_dir = Path(__file__).resolve().parent.parent
 
-    # Get raw data directory from configuration
-    raw_directory = project_dir / config["directories"]["raw"]
+        # Get filename from configuration
+        if filename is None:
+            filename = config["input_file"]
 
-    # Locate the CSV file
-    file_path = raw_directory / filename
+        # Get raw data directory from configuration
+        raw_directory = project_dir / config["directories"]["raw"]
 
-    # Check whether the file exists
-    if not file_path.exists():
-        raise FileNotFoundError(f"Dataset not found: {file_path}")
+        # Locate the CSV file
+        file_path = raw_directory / filename
 
-    # Read CSV data
-    df = pd.read_csv(file_path)
+        logger.info("Starting extraction from: %s", filename)
 
-    print("Data extracted successfully!")
-    print("Source file:", filename)
+        # Check whether the file exists
+        if not file_path.exists():
+            raise FileNotFoundError(
+                f"Dataset not found: {file_path}"
+            )
 
-    return df
+        # Read CSV data
+        df = pd.read_csv(file_path)
+
+        logger.info("Data extracted successfully")
+        logger.info("Total records extracted: %s", len(df))
+
+        return df
+
+    except Exception:
+        logger.exception("Data extraction failed")
+        raise
 
 
 if __name__ == "__main__":

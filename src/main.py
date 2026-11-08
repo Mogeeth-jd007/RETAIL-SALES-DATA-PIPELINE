@@ -11,75 +11,107 @@ from validate import (
 )
 from load import load_data
 from config import load_config
+from logger import get_logger
+
+
+# Initialize logger
+logger = get_logger("MAIN")
 
 
 def run_pipeline():
 
-    print("\n========== RETAIL SALES ETL PIPELINE ==========\n")
+    logger.info("========== RETAIL SALES ETL PIPELINE STARTED ==========")
 
-    # Load project configuration
-    config = load_config()
+    try:
 
-    # STEP 1: EXTRACT
-    print("STEP 1: EXTRACT")
+        # Load project configuration
+        logger.info("Loading project configuration")
 
-    input_file = config["input_file"]
-    df = extract_data(input_file)
+        config = load_config()
 
-    # STEP 2: TRANSFORM
-    print("\nSTEP 2: TRANSFORM")
+        # STEP 1: EXTRACT
+        logger.info("STEP 1: EXTRACT")
 
-    transformed_df = transform_data(df)
+        input_file = config["input_file"]
+        df = extract_data(input_file)
 
-    # STEP 3: VALIDATE
-    print("\nSTEP 3: VALIDATE")
+        logger.info("Extraction completed successfully")
 
-    validate_data(transformed_df)
+        # STEP 2: TRANSFORM
+        logger.info("STEP 2: TRANSFORM")
 
-    # STEP 4: CLASSIFY
-    print("\nSTEP 4: CLASSIFY")
+        transformed_df = transform_data(df)
 
-    classified_df = classify_records(transformed_df)
+        logger.info("Transformation completed successfully")
 
-    # STEP 5: SEPARATE RECORDS
-    print("\nSTEP 5: SEPARATE RECORDS")
+        # STEP 3: VALIDATE
+        logger.info("STEP 3: VALIDATE")
 
-    valid_records, warning_records, rejected_records = (
-        separate_records(classified_df)
-    )
+        validate_data(transformed_df)
 
-    # STEP 6: SAVE VALIDATION RESULTS
-    print("\nSTEP 6: SAVE VALIDATION FILES")
+        logger.info("Validation completed successfully")
 
-    save_validation_results(
-        valid_records,
-        warning_records,
-        rejected_records
-    )
+        # STEP 4: CLASSIFY
+        logger.info("STEP 4: CLASSIFY")
 
-    # STEP 7: LOAD ELIGIBLE RECORDS
-    print("\nSTEP 7: LOAD")
+        classified_df = classify_records(transformed_df)
 
-    records_to_load = pd.concat(
-        [valid_records, warning_records],
-        ignore_index=True
-    )
+        logger.info("Classification completed successfully")
 
-    # Remove classification column
-    records_to_load = records_to_load.drop(
-        columns=["status"],
-        errors="ignore"
-    )
+        # STEP 5: SEPARATE RECORDS
+        logger.info("STEP 5: SEPARATE RECORDS")
 
-    # Convert dates into SQLite-friendly strings
-    if "order_date" in records_to_load.columns:
-        records_to_load["order_date"] = (
-            records_to_load["order_date"].astype(str)
+        valid_records, warning_records, rejected_records = (
+            separate_records(classified_df)
         )
 
-    load_data(records_to_load)
+        logger.info(
+            "Record separation completed: Valid=%s, Warnings=%s, Rejected=%s",
+            len(valid_records),
+            len(warning_records),
+            len(rejected_records)
+        )
 
-    print("\n========== ETL PIPELINE COMPLETED ==========\n")
+        # STEP 6: SAVE VALIDATION RESULTS
+        logger.info("STEP 6: SAVE VALIDATION FILES")
+
+        save_validation_results(
+            valid_records,
+            warning_records,
+            rejected_records
+        )
+
+        logger.info("Validation files saved successfully")
+
+        # STEP 7: LOAD ELIGIBLE RECORDS
+        logger.info("STEP 7: LOAD")
+
+        records_to_load = pd.concat(
+            [valid_records, warning_records],
+            ignore_index=True
+        )
+
+        # Remove classification column
+        records_to_load = records_to_load.drop(
+            columns=["status"],
+            errors="ignore"
+        )
+
+        # Convert dates into SQLite-friendly strings
+        if "order_date" in records_to_load.columns:
+            records_to_load["order_date"] = (
+                records_to_load["order_date"].astype(str)
+            )
+
+        load_data(records_to_load)
+
+        logger.info("Loading completed successfully")
+
+        logger.info("========== ETL PIPELINE COMPLETED SUCCESSFULLY ==========")
+
+    except Exception:
+        logger.exception("ETL PIPELINE FAILED")
+        raise
 
 
 if __name__ == "__main__":

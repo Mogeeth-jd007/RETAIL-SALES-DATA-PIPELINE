@@ -1,53 +1,74 @@
-
 import pandas as pd
 from pathlib import Path
 
 from extract import extract_data
 from config import load_config
+from logger import get_logger
+
+
+logger = get_logger("TRANSFORM")
 
 
 def transform_data(df):
 
-    # Work on a copy of the original data
-    df = df.copy()
+    try:
 
-    # 1. Clean column names
-    df.columns = df.columns.str.strip().str.lower()
+        logger.info("Starting data transformation")
 
-    # 2. Clean text columns without deleting missing values
-    for column in ["customer_name", "product", "category", "city"]:
+        # Work on a copy of the original data
+        df = df.copy()
 
-        df[column] = (
-            df[column]
-            .astype("string")
-            .str.strip()
+        # 1. Clean column names
+        df.columns = df.columns.str.strip().str.lower()
+
+        logger.info("Column names cleaned")
+
+        # 2. Clean text columns
+        for column in ["customer_name", "product", "category", "city"]:
+
+            df[column] = (
+                df[column]
+                .astype("string")
+                .str.strip()
+            )
+
+        # Convert empty strings into missing values
+        for column in ["customer_name", "product", "category", "city"]:
+
+            df[column] = df[column].replace("", pd.NA)
+
+        logger.info("Text columns cleaned")
+
+        # 3. Convert data types
+        df["order_date"] = pd.to_datetime(
+            df["order_date"], errors="coerce"
         )
 
-    # Convert empty strings into missing values
-    for column in ["customer_name", "product", "category", "city"]:
+        df["quantity"] = pd.to_numeric(
+            df["quantity"], errors="coerce"
+        )
 
-        df[column] = df[column].replace("", pd.NA)
+        df["price"] = pd.to_numeric(
+            df["price"], errors="coerce"
+        )
 
-    # 3. Convert data types
-    df["order_date"] = pd.to_datetime(
-        df["order_date"], errors="coerce"
-    )
+        logger.info("Data types converted successfully")
 
-    df["quantity"] = pd.to_numeric(
-        df["quantity"], errors="coerce"
-    )
+        # 4. Calculate total sales
+        df["total_amount"] = df["quantity"] * df["price"]
 
-    df["price"] = pd.to_numeric(
-        df["price"], errors="coerce"
-    )
+        logger.info("Total sales calculated")
 
-    # 4. Calculate total sales
-    df["total_amount"] = df["quantity"] * df["price"]
+        logger.info(
+            "Transformation completed. Records preserved: %s",
+            len(df)
+        )
 
-    print("Data transformation completed!")
-    print("Records preserved:", len(df))
+        return df
 
-    return df
+    except Exception:
+        logger.exception("Data transformation failed")
+        raise
 
 
 if __name__ == "__main__":

@@ -4,215 +4,236 @@ from pathlib import Path
 
 from extract import extract_data
 from config import load_config
+from logger import get_logger
+
+
+logger = get_logger("VALIDATE")
 
 
 def validate_data(df):
 
-    print("\n========== DATA QUALITY REPORT ==========\n")
+    try:
 
-    total_records = len(df)
+        logger.info("========== DATA QUALITY REPORT ==========")
 
-    print("Total records:", total_records)
+        total_records = len(df)
 
-    # 1. Check missing values
-    print("\n1. MISSING VALUES")
+        logger.info("Total records: %s", total_records)
 
-    for column in df.columns:
-        missing = df[column].isna().sum()
-        print(f"{column}: {missing}")
+        # 1. Check missing values
+        logger.info("1. MISSING VALUES")
 
-    # 2. Check duplicate orders
-    print("\n2. DUPLICATE ORDERS")
+        for column in df.columns:
+            missing = df[column].isna().sum()
+            logger.info("%s: %s missing values", column, missing)
 
-    duplicates = df["order_id"].duplicated().sum()
+        # 2. Check duplicate orders
+        duplicates = df["order_id"].duplicated().sum()
 
-    print("Duplicate orders:", duplicates)
+        logger.info("Duplicate orders: %s", duplicates)
 
-    # 3. Check invalid dates
-    print("\n3. INVALID DATES")
-
-    dates = pd.to_datetime(
-        df["order_date"], errors="coerce"
-    )
-
-    print("Invalid dates:", dates.isna().sum())
-
-    # 4. Check invalid numeric values
-    print("\n4. INVALID NUMERIC VALUES")
-
-    for column in ["quantity", "price"]:
-
-        values = pd.to_numeric(
-            df[column], errors="coerce"
+        # 3. Check invalid dates
+        dates = pd.to_datetime(
+            df["order_date"], errors="coerce"
         )
 
-        invalid = (
-            values.isna() & df[column].notna()
-        ).sum()
+        logger.info("Invalid dates: %s", dates.isna().sum())
 
-        print(f"Invalid {column} values:", invalid)
+        # 4. Check invalid numeric values
+        for column in ["quantity", "price"]:
 
-    # 5. Check negative or zero values
-    print("\n5. NON-POSITIVE VALUES")
+            values = pd.to_numeric(
+                df[column], errors="coerce"
+            )
 
-    for column in ["quantity", "price"]:
+            invalid = (
+                values.isna() & df[column].notna()
+            ).sum()
 
-        values = pd.to_numeric(
-            df[column], errors="coerce"
-        )
+            logger.info("Invalid %s values: %s", column, invalid)
 
-        non_positive = (
-            (values <= 0) & values.notna()
-        ).sum()
+        # 5. Check negative or zero values
+        for column in ["quantity", "price"]:
 
-        print(f"Non-positive {column}:", non_positive)
+            values = pd.to_numeric(
+                df[column], errors="coerce"
+            )
 
-    print("\n========== VALIDATION COMPLETED ==========\n")
+            non_positive = (
+                (values <= 0) & values.notna()
+            ).sum()
 
+            logger.info(
+                "Non-positive %s values: %s",
+                column,
+                non_positive
+            )
+
+        logger.info("Data quality validation completed")
+
+    except Exception:
+        logger.exception("Data quality validation failed")
+        raise
 
 
 def classify_records(df):
 
-    print("\n========== RECORD CLASSIFICATION ==========\n")
+    try:
 
-    df = df.copy()
+        logger.info("Starting record classification")
 
-    # 1. Convert columns to appropriate formats
-    df["order_date"] = pd.to_datetime(
-        df["order_date"], errors="coerce"
-    )
+        df = df.copy()
 
-    df["quantity"] = pd.to_numeric(
-        df["quantity"], errors="coerce"
-    )
+        # 1. Convert columns to appropriate formats
+        df["order_date"] = pd.to_datetime(
+            df["order_date"], errors="coerce"
+        )
 
-    df["price"] = pd.to_numeric(
-        df["price"], errors="coerce"
-    )
+        df["quantity"] = pd.to_numeric(
+            df["quantity"], errors="coerce"
+        )
 
-    # 2. Identify duplicate order IDs
-    duplicate_orders = (
-        df["order_id"].notna()
-        & df["order_id"].duplicated(keep="first")
-    )
+        df["price"] = pd.to_numeric(
+            df["price"], errors="coerce"
+        )
 
-    # 3. Identify critical errors
-    critical_errors = (
-        df["order_id"].isna()
-        | df["order_date"].isna()
-        | df["quantity"].isna()
-        | df["price"].isna()
-        | (df["quantity"] <= 0)
-        | (df["price"] <= 0)
-        | duplicate_orders
-    )
+        # 2. Identify duplicate order IDs
+        duplicate_orders = (
+            df["order_id"].notna()
+            & df["order_id"].duplicated(keep="first")
+        )
 
-    # 4. Identify non-critical errors
-    warnings = (
-        df["customer_name"].isna()
-        | df["product"].isna()
-        | df["category"].isna()
-        | df["city"].isna()
-    )
+        # 3. Identify critical errors
+        critical_errors = (
+            df["order_id"].isna()
+            | df["order_date"].isna()
+            | df["quantity"].isna()
+            | df["price"].isna()
+            | (df["quantity"] <= 0)
+            | (df["price"] <= 0)
+            | duplicate_orders
+        )
 
-    # 5. Assign classification
-    df["status"] = "VALID"
+        # 4. Identify non-critical errors
+        warnings = (
+            df["customer_name"].isna()
+            | df["product"].isna()
+            | df["category"].isna()
+            | df["city"].isna()
+        )
 
-    df.loc[warnings & ~critical_errors, "status"] = "WARNING"
+        # 5. Assign classification
+        df["status"] = "VALID"
 
-    df.loc[critical_errors, "status"] = "REJECTED"
+        df.loc[warnings & ~critical_errors, "status"] = "WARNING"
 
-    # 6. Generate classification summary
-    valid_count = (df["status"] == "VALID").sum()
-    warning_count = (df["status"] == "WARNING").sum()
-    rejected_count = (df["status"] == "REJECTED").sum()
+        df.loc[critical_errors, "status"] = "REJECTED"
 
-    print("Valid records:", valid_count)
-    print("Warning records:", warning_count)
-    print("Rejected records:", rejected_count)
+        # 6. Generate classification summary
+        valid_count = (df["status"] == "VALID").sum()
+        warning_count = (df["status"] == "WARNING").sum()
+        rejected_count = (df["status"] == "REJECTED").sum()
 
-    print("\nClassified records:")
+        logger.info("Valid records: %s", valid_count)
+        logger.info("Warning records: %s", warning_count)
+        logger.info("Rejected records: %s", rejected_count)
 
-    print(
-        df[[
-            "order_id",
-            "customer_name",
-            "quantity",
-            "price",
-            "status"
-        ]]
-    )
+        logger.info(
+            "Classified records:\n%s",
+            df[[
+                "order_id",
+                "customer_name",
+                "quantity",
+                "price",
+                "status"
+            ]].to_string(index=False)
+        )
 
-    # 7. Verify classification totals
-    assert valid_count + warning_count + rejected_count == len(df)
+        # 7. Verify classification totals
+        assert valid_count + warning_count + rejected_count == len(df)
 
-    print("\nClassification verification successful!")
+        logger.info("Classification verification successful")
 
-    return df
+        return df
 
+    except Exception:
+        logger.exception("Record classification failed")
+        raise
 
 
 def separate_records(df):
 
-    valid_records = df[df["status"] == "VALID"]
+    try:
 
-    warning_records = df[df["status"] == "WARNING"]
+        valid_records = df[df["status"] == "VALID"]
 
-    rejected_records = df[df["status"] == "REJECTED"]
+        warning_records = df[df["status"] == "WARNING"]
 
-    print("\n========== RECORD SEPARATION ==========\n")
+        rejected_records = df[df["status"] == "REJECTED"]
 
-    print("Valid records:", len(valid_records))
-    print("Warning records:", len(warning_records))
-    print("Rejected records:", len(rejected_records))
+        logger.info("========== RECORD SEPARATION ==========")
 
-    print("\nRecords ready for processing:")
-    print(len(valid_records) + len(warning_records))
+        logger.info("Valid records: %s", len(valid_records))
+        logger.info("Warning records: %s", len(warning_records))
+        logger.info("Rejected records: %s", len(rejected_records))
 
-    return valid_records, warning_records, rejected_records
+        logger.info(
+            "Records ready for processing: %s",
+            len(valid_records) + len(warning_records)
+        )
+
+        return valid_records, warning_records, rejected_records
+
+    except Exception:
+        logger.exception("Record separation failed")
+        raise
 
 
 def save_validation_results(valid, warnings, rejected):
 
-    # Load configuration
-    config = load_config()
+    try:
 
-    # Locate project directory
-    project_dir = Path(__file__).resolve().parent.parent
+        logger.info("Starting validation file saving")
 
-    # Get output directories from configuration
-    processed_dir = project_dir / config["directories"]["processed"]
-    rejected_dir = project_dir / config["directories"]["rejected"]
+        # Load configuration
+        config = load_config()
 
-    processed_dir.mkdir(parents=True, exist_ok=True)
-    rejected_dir.mkdir(parents=True, exist_ok=True)
+        # Locate project directory
+        project_dir = Path(__file__).resolve().parent.parent
 
-    # Get output filenames from configuration
-    validation_files = config["validation_files"]
+        # Get output directories from configuration
+        processed_dir = project_dir / config["directories"]["processed"]
+        rejected_dir = project_dir / config["directories"]["rejected"]
 
-    # Save valid records
-    valid.to_csv(
-        processed_dir / validation_files["valid"],
-        index=False
-    )
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        rejected_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save warning records
-    warnings.to_csv(
-        processed_dir / validation_files["warnings"],
-        index=False
-    )
+        # Get output filenames from configuration
+        validation_files = config["validation_files"]
 
-    # Save rejected records
-    rejected.to_csv(
-        rejected_dir / validation_files["rejected"],
-        index=False
-    )
+        # Save valid records
+        valid_path = processed_dir / validation_files["valid"]
+        valid.to_csv(valid_path, index=False)
 
-    print("\n========== FILE SAVING REPORT ==========\n")
+        logger.info("Valid records saved: %s", valid_path)
 
-    print("Valid records saved successfully!")
-    print("Warning records saved successfully!")
-    print("Rejected records saved successfully!")
+        # Save warning records
+        warning_path = processed_dir / validation_files["warnings"]
+        warnings.to_csv(warning_path, index=False)
+
+        logger.info("Warning records saved: %s", warning_path)
+
+        # Save rejected records
+        rejected_path = rejected_dir / validation_files["rejected"]
+        rejected.to_csv(rejected_path, index=False)
+
+        logger.info("Rejected records saved: %s", rejected_path)
+
+        logger.info("Validation files saved successfully")
+
+    except Exception:
+        logger.exception("Saving validation files failed")
+        raise
 
 
 if __name__ == "__main__":
