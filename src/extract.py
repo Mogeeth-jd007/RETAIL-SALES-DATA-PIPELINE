@@ -1,15 +1,26 @@
 
 import pandas as pd
 from pathlib import Path
+from config import load_config
 
 
-def extract_data(filename="retail_sales.csv"):
+def extract_data(filename=None):
+
+    # Load project configuration
+    config = load_config()
 
     # Locate the project directory
     project_dir = Path(__file__).resolve().parent.parent
 
-    # Locate the raw CSV file
-    file_path = project_dir / "data" / "raw" / filename
+    # Get filename from configuration
+    if filename is None:
+        filename = config["input_file"]
+
+    # Get raw data directory from configuration
+    raw_directory = project_dir / config["directories"]["raw"]
+
+    # Locate the CSV file
+    file_path = raw_directory / filename
 
     # Check whether the file exists
     if not file_path.exists():

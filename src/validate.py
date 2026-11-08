@@ -1,7 +1,9 @@
 
 import pandas as pd
+from pathlib import Path
 
 from extract import extract_data
+from config import load_config
 
 
 def validate_data(df):
@@ -69,18 +71,13 @@ def validate_data(df):
 
 
 
-
-
-
-
-
 def classify_records(df):
 
     print("\n========== RECORD CLASSIFICATION ==========\n")
 
     df = df.copy()
 
-    # Convert columns to appropriate formats
+    # 1. Convert columns to appropriate formats
     df["order_date"] = pd.to_datetime(
         df["order_date"], errors="coerce"
     )
@@ -93,12 +90,13 @@ def classify_records(df):
         df["price"], errors="coerce"
     )
 
-    # Identify duplicate orders
-    duplicate_orders = df["order_id"].duplicated(
-        keep="first"
+    # 2. Identify duplicate order IDs
+    duplicate_orders = (
+        df["order_id"].notna()
+        & df["order_id"].duplicated(keep="first")
     )
 
-    # Identify critical errors
+    # 3. Identify critical errors
     critical_errors = (
         df["order_id"].isna()
         | df["order_date"].isna()
@@ -109,7 +107,7 @@ def classify_records(df):
         | duplicate_orders
     )
 
-    # Identify warnings
+    # 4. Identify non-critical errors
     warnings = (
         df["customer_name"].isna()
         | df["product"].isna()
@@ -117,23 +115,41 @@ def classify_records(df):
         | df["city"].isna()
     )
 
+    # 5. Assign classification
     df["status"] = "VALID"
 
     df.loc[warnings & ~critical_errors, "status"] = "WARNING"
 
     df.loc[critical_errors, "status"] = "REJECTED"
 
-    print("Valid records:", (df["status"] == "VALID").sum())
+    # 6. Generate classification summary
+    valid_count = (df["status"] == "VALID").sum()
+    warning_count = (df["status"] == "WARNING").sum()
+    rejected_count = (df["status"] == "REJECTED").sum()
 
-    print("Warning records:", (df["status"] == "WARNING").sum())
-
-    print("Rejected records:", (df["status"] == "REJECTED").sum())
+    print("Valid records:", valid_count)
+    print("Warning records:", warning_count)
+    print("Rejected records:", rejected_count)
 
     print("\nClassified records:")
 
-    print(df[["order_id", "customer_name", "quantity", "price", "status"]])
+    print(
+        df[[
+            "order_id",
+            "customer_name",
+            "quantity",
+            "price",
+            "status"
+        ]]
+    )
+
+    # 7. Verify classification totals
+    assert valid_count + warning_count + rejected_count == len(df)
+
+    print("\nClassification verification successful!")
 
     return df
+
 
 
 def separate_records(df):
@@ -156,31 +172,39 @@ def separate_records(df):
     return valid_records, warning_records, rejected_records
 
 
-from pathlib import Path
-
-
 def save_validation_results(valid, warnings, rejected):
 
+    # Load configuration
+    config = load_config()
+
+    # Locate project directory
     project_dir = Path(__file__).resolve().parent.parent
 
-    processed_dir = project_dir / "data" / "processed"
-    rejected_dir = project_dir / "data" / "rejected"
+    # Get output directories from configuration
+    processed_dir = project_dir / config["directories"]["processed"]
+    rejected_dir = project_dir / config["directories"]["rejected"]
 
     processed_dir.mkdir(parents=True, exist_ok=True)
     rejected_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get output filenames from configuration
+    validation_files = config["validation_files"]
+
+    # Save valid records
     valid.to_csv(
-        processed_dir / "valid_records.csv",
+        processed_dir / validation_files["valid"],
         index=False
     )
 
+    # Save warning records
     warnings.to_csv(
-        processed_dir / "warning_records.csv",
+        processed_dir / validation_files["warnings"],
         index=False
     )
 
+    # Save rejected records
     rejected.to_csv(
-        rejected_dir / "rejected_records.csv",
+        rejected_dir / validation_files["rejected"],
         index=False
     )
 
@@ -193,20 +217,23 @@ def save_validation_results(valid, warnings, rejected):
 
 if __name__ == "__main__":
 
-    from pathlib import Path
+    # Extract raw data using configuration
+    sales_data = extract_data()
 
-    project_dir = Path(__file__).resolve().parent.parent
-
-    test_file = project_dir / "data" / "raw" / "retail_sales_test.csv"
-
-    sales_data = pd.read_csv(test_file)
-
+    # Generate data quality report
     validate_data(sales_data)
 
+    # Classify records
     classified_data = classify_records(sales_data)
-    valid_records, warning_records, rejected_records = separate_records(classified_data)
+
+    # Separate records
+    valid_records, warning_records, rejected_records = separate_records(
+        classified_data
+    )
+
+    # Save validation results
     save_validation_results(
-    valid_records,
-    warning_records,
-    rejected_records
-)
+        valid_records,
+        warning_records,
+        rejected_records
+    )

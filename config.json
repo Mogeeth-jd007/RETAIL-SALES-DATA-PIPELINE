@@ -1,0 +1,22 @@
+
+{
+    "input_file": "retail_sales.csv",
+    "processed_file": "cleaned_retail_sales.csv",
+
+    "directories": {
+        "raw": "data/raw",
+        "processed": "data/processed",
+        "rejected": "data/rejected"
+    },
+
+    "database": {
+        "file": "data/retail_sales.db",
+        "table": "retail_sales"
+    },
+
+    "validation_files": {
+        "valid": "valid_records.csv",
+        "warnings": "warning_records.csv",
+        "rejected": "rejected_records.csv"
+    }
+}

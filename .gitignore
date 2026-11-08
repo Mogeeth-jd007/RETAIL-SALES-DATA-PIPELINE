@@ -1,6 +1,21 @@
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Virtual environments
 .venv/
 venv/
+
+# Environment variables
 .env
+
+# Operating system files
 .DS_Store
+
+# Generated ETL outputs
+data/processed/
+data/rejected/
+
+# SQLite database
+data/*.db

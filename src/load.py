@@ -1,27 +1,37 @@
 
 import sqlite3
-from pathlib import Path
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATABASE_FILE = BASE_DIR / "data" / "retail_sales.db"
+from config import load_config, get_project_path
 
 
 def load_data(df):
 
-    print("Starting Load Process...")
+    print("\nStarting Load Process...")
 
-    conn = sqlite3.connect(DATABASE_FILE)
+    # Load configuration
+    config = load_config()
 
-    df.to_sql(
-        name="retail_sales",
-        con=conn,
-        if_exists="replace",
-        index=False
-    )
+    # Get database settings
+    database_file = get_project_path(config["database"]["file"])
+    table_name = config["database"]["table"]
 
-    conn.close()
+    # Connect to SQLite database
+    conn = sqlite3.connect(database_file)
 
-    print("Data successfully loaded into SQLite database!")
+    try:
+
+        # Load data into database
+        df.to_sql(
+            name=table_name,
+            con=conn,
+            if_exists="replace",
+            index=False
+        )
+
+    finally:
+        conn.close()
+
+    print("\nData successfully loaded into SQLite database!")
     print(f"Total records loaded: {len(df)}")
-    print(f"Database location: {DATABASE_FILE}")
+    print(f"Database location: {database_file}")
+    print(f"Table name: {table_name}")

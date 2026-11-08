@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 from extract import extract_data
+from config import load_config
 
 
 def transform_data(df):
@@ -51,21 +52,26 @@ def transform_data(df):
 
 if __name__ == "__main__":
 
+    # Load configuration
+    config = load_config()
+
     # Extract raw data
     sales_data = extract_data()
 
     # Transform raw data
     cleaned_data = transform_data(sales_data)
 
-    # Create processed folder
+    # Locate project directory
     project_dir = Path(__file__).resolve().parent.parent
 
-    output_dir = project_dir / "data" / "processed"
+    # Get processed directory from configuration
+    output_dir = project_dir / config["directories"]["processed"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save transformed data
-    output_file = output_dir / "cleaned_retail_sales.csv"
+    # Get output filename from configuration
+    output_file = output_dir / config["processed_file"]
 
+    # Save transformed data
     cleaned_data.to_csv(output_file, index=False)
 
     print("\nTransformed data:")

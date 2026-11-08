@@ -1,8 +1,0 @@
-order_id,order_date,customer_name,product,category,quantity,price,city,total_amount,status
-2003,,Priya,Keyboard,Accessories,2.0,1200.0,Coimbatore,2400.0,REJECTED
-2004,2026-02-04,Kumar,Monitor,Electronics,-1.0,12000.0,Chennai,-12000.0,REJECTED
-2005,2026-02-05,Divya,Mobile,Electronics,2.0,-15000.0,Madurai,-30000.0,REJECTED
-2001,2026-02-01,Rahul,Laptop,Electronics,2.0,45000.0,Chennai,90000.0,REJECTED
-2006,2026-02-06,Arun,Mouse,Accessories,,500.0,Bangalore,,REJECTED
-2007,2026-02-07,Suresh,Laptop,Electronics,,45000.0,Chennai,,REJECTED
-2008,2026-02-08,Meena,Mobile,Electronics,2.0,,Madurai,,REJECTED
