@@ -2,8 +2,19 @@
 import argparse
 import pandas as pd
 
+from universal.universal_pipeline import run_universal_pipeline
+
 from extract import extract_data
 from transform import transform_data
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
 from validate import (
     validate_data,
     classify_records,
@@ -145,27 +156,36 @@ def run_pipeline(dataset_name=None, input_file=None):
 
 if __name__ == "__main__":
 
-    # Command-line arguments
     parser = argparse.ArgumentParser(
-        description="Multi-dataset ETL Pipeline"
+        description="Automated ETL Pipeline"
     )
 
     parser.add_argument(
         "--dataset",
         choices=["retail", "employee", "student"],
         default=None,
-        help="Dataset profile to process"
+        help="Dataset profile for existing ETL mode"
     )
 
     parser.add_argument(
         "--file",
         default=None,
-        help="Optional CSV filename override"
+        help="CSV file for universal automated ETL mode"
     )
 
     args = parser.parse_args()
 
-    run_pipeline(
-        dataset_name=args.dataset,
-        input_file=args.file
-    )
+    if args.dataset and args.file:
+        parser.error(
+            "--dataset and --file cannot be used together."
+        )
+
+    if args.file:
+
+        run_universal_pipeline(args.file)
+
+    else:
+
+        run_pipeline(
+            dataset_name=args.dataset
+        )

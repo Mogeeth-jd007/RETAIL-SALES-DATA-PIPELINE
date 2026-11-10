@@ -22,3 +22,6 @@ data/*.db
 
 # Application logs
 logs/
+
+# Generated quality reports
+reports/

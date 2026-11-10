@@ -1,0 +1,7 @@
+SKU,Product Name,Category,Quantity,Unit Price,Last Restock Date,Active
+SKU-101,Wireless Mouse,Electronics,45,799.50,2026-10-01,Yes
+SKU-102,Keyboard,Electronics,30,1299,2026-10-03,Yes
+SKU-103,Office Chair,Furniture,12,5499,2026-10-05,Yes
+SKU-104,Notebook,Stationery,100,,2026-10-07,Yes
+SKU-105,Desk Lamp,Electronics,20,999,2026-10-09,No
+SKU-102,Keyboard,Electronics,30,1299,2026-10-03,Yes

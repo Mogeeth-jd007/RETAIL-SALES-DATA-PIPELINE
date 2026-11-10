@@ -1,0 +1,6 @@
+Transaction Reference,Customer Name,Transaction Amount,Payment Date,Payment Status,Is Refunded
+TXN-001,Aarav,2500.50,2026-09-01,Completed,No
+TXN-002,Diya,1800.00,2026-09-02,Pending,No
+TXN-003,Rohan,4200.75,2026-09-03,Completed,Yes
+TXN-004,Ananya,,2026-09-04,Failed,No
+TXN-005,Kabir,3200.00,2026-09-05,Completed,No
