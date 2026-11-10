@@ -12,6 +12,7 @@ from validate import (
 from load import load_data
 from config import load_config
 from logger import get_logger
+import sys
 
 
 # Initialize logger
@@ -32,7 +33,7 @@ def run_pipeline():
         # STEP 1: EXTRACT
         logger.info("STEP 1: EXTRACT")
 
-        input_file = config["input_file"]
+        input_file = sys.argv[1] if len(sys.argv) > 1 else config["input_file"]
         df = extract_data(input_file)
 
         logger.info("Extraction completed successfully")

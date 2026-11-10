@@ -16,9 +16,32 @@ def validate_data(df):
 
         logger.info("========== DATA QUALITY REPORT ==========")
 
+        # Load validation rules from configuration
+        config = load_config()
+        rules = config["validation"]
+
         total_records = len(df)
 
         logger.info("Total records: %s", total_records)
+
+        # Check whether configured columns exist
+        configured_columns = (
+            rules["required_columns"]
+            + rules["warning_columns"]
+            + rules["positive_columns"]
+            + rules["date_columns"]
+            + rules["unique_columns"]
+        )
+
+        missing_columns = [
+            column for column in set(configured_columns)
+            if column not in df.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"Configured columns missing from dataset: {missing_columns}"
+            )
 
         # 1. Check missing values
         logger.info("1. MISSING VALUES")
@@ -27,38 +50,56 @@ def validate_data(df):
             missing = df[column].isna().sum()
             logger.info("%s: %s missing values", column, missing)
 
-        # 2. Check duplicate orders
-        duplicates = df["order_id"].duplicated().sum()
+        # 2. Check duplicate values in configured unique columns
+        logger.info("2. DUPLICATE CHECKS")
 
-        logger.info("Duplicate orders: %s", duplicates)
-
-        # 3. Check invalid dates
-        dates = pd.to_datetime(
-            df["order_date"], errors="coerce"
-        )
-
-        logger.info("Invalid dates: %s", dates.isna().sum())
-
-        # 4. Check invalid numeric values
-        for column in ["quantity", "price"]:
-
-            values = pd.to_numeric(
-                df[column], errors="coerce"
-            )
-
-            invalid = (
-                values.isna() & df[column].notna()
+        for column in rules["unique_columns"]:
+            duplicates = (
+                df[column].notna()
+                & df[column].duplicated()
             ).sum()
 
-            logger.info("Invalid %s values: %s", column, invalid)
+            logger.info(
+                "Duplicate %s values: %s",
+                column,
+                duplicates
+            )
 
-        # 5. Check negative or zero values
-        for column in ["quantity", "price"]:
+        # 3. Check invalid dates
+        logger.info("3. DATE VALIDATION")
+
+        for column in rules["date_columns"]:
+            dates = pd.to_datetime(
+                df[column], errors="coerce"
+            )
+
+            invalid_dates = dates.isna().sum()
+
+            logger.info(
+                "Missing or invalid %s values: %s",
+                column,
+                invalid_dates
+            )
+
+        # 4. Check invalid numeric values
+        logger.info("4. NUMERIC VALIDATION")
+
+        for column in rules["positive_columns"]:
 
             values = pd.to_numeric(
                 df[column], errors="coerce"
             )
+            invalid = values.isna().sum()
 
+            
+
+            logger.info(
+                "Missing or invalid %s values: %s",
+                column,
+                invalid
+            )
+
+            # 5. Check negative or zero values
             non_positive = (
                 (values <= 0) & values.notna()
             ).sum()
@@ -76,6 +117,7 @@ def validate_data(df):
         raise
 
 
+
 def classify_records(df):
 
     try:
@@ -84,52 +126,86 @@ def classify_records(df):
 
         df = df.copy()
 
-        # 1. Convert columns to appropriate formats
-        df["order_date"] = pd.to_datetime(
-            df["order_date"], errors="coerce"
+        # Load validation rules from configuration
+        config = load_config()
+        rules = config["validation"]
+
+        # Check whether configured columns exist
+        configured_columns = (
+            rules["required_columns"]
+            + rules["warning_columns"]
+            + rules["positive_columns"]
+            + rules["date_columns"]
+            + rules["unique_columns"]
         )
 
-        df["quantity"] = pd.to_numeric(
-            df["quantity"], errors="coerce"
-        )
+        missing_columns = [
+            column for column in set(configured_columns)
+            if column not in df.columns
+        ]
 
-        df["price"] = pd.to_numeric(
-            df["price"], errors="coerce"
-        )
+        if missing_columns:
+            raise ValueError(
+                f"Configured columns missing from dataset: {missing_columns}"
+            )
 
-        # 2. Identify duplicate order IDs
-        duplicate_orders = (
-            df["order_id"].notna()
-            & df["order_id"].duplicated(keep="first")
-        )
+        # 1. Convert configured date columns
+        for column in rules["date_columns"]:
+            df[column] = pd.to_datetime(
+                df[column], errors="coerce"
+            )
 
-        # 3. Identify critical errors
-        critical_errors = (
-            df["order_id"].isna()
-            | df["order_date"].isna()
-            | df["quantity"].isna()
-            | df["price"].isna()
-            | (df["quantity"] <= 0)
-            | (df["price"] <= 0)
-            | duplicate_orders
-        )
+        # 2. Convert configured positive-value columns
+        for column in rules["positive_columns"]:
+            df[column] = pd.to_numeric(
+                df[column], errors="coerce"
+            )
 
-        # 4. Identify non-critical errors
-        warnings = (
-            df["customer_name"].isna()
-            | df["product"].isna()
-            | df["category"].isna()
-            | df["city"].isna()
-        )
+        # 3. Initialize error masks
+        critical_errors = pd.Series(False, index=df.index)
+        warnings = pd.Series(False, index=df.index)
 
-        # 5. Assign classification
+        # 4. Check required columns
+        for column in rules["required_columns"]:
+            critical_errors |= df[column].isna()
+
+        # 5. Check invalid dates
+        for column in rules["date_columns"]:
+            critical_errors |= df[column].isna()
+
+        # 6. Check invalid or non-positive numeric values
+        for column in rules["positive_columns"]:
+            critical_errors |= (
+                df[column].isna() | (df[column] <= 0)
+            )
+
+        # 7. Check duplicate values in unique columns
+        for column in rules["unique_columns"]:
+            duplicates = (
+                df[column].notna()
+                & df[column].duplicated(keep="first")
+            )
+
+            critical_errors |= duplicates
+
+        # 8. Check warning columns
+        for column in rules["warning_columns"]:
+            warnings |= df[column].isna()
+
+        # 9. Assign classification
         df["status"] = "VALID"
 
-        df.loc[warnings & ~critical_errors, "status"] = "WARNING"
+        df.loc[
+            warnings & ~critical_errors,
+            "status"
+        ] = "WARNING"
 
-        df.loc[critical_errors, "status"] = "REJECTED"
+        df.loc[
+            critical_errors,
+            "status"
+        ] = "REJECTED"
 
-        # 6. Generate classification summary
+        # 10. Generate classification summary
         valid_count = (df["status"] == "VALID").sum()
         warning_count = (df["status"] == "WARNING").sum()
         rejected_count = (df["status"] == "REJECTED").sum()
@@ -138,19 +214,24 @@ def classify_records(df):
         logger.info("Warning records: %s", warning_count)
         logger.info("Rejected records: %s", rejected_count)
 
+        # 11. Display a dynamic classification preview
+        preview_columns = list(dict.fromkeys(
+            rules["required_columns"]
+            + rules["warning_columns"]
+            + rules["positive_columns"]
+            + ["status"]
+        ))
+
         logger.info(
             "Classified records:\n%s",
-            df[[
-                "order_id",
-                "customer_name",
-                "quantity",
-                "price",
-                "status"
-            ]].to_string(index=False)
+            df[preview_columns].to_string(index=False)
         )
 
-        # 7. Verify classification totals
-        assert valid_count + warning_count + rejected_count == len(df)
+        # 12. Verify classification totals
+        assert (
+            valid_count + warning_count + rejected_count
+            == len(df)
+        )
 
         logger.info("Classification verification successful")
 
@@ -159,6 +240,7 @@ def classify_records(df):
     except Exception:
         logger.exception("Record classification failed")
         raise
+
 
 
 def separate_records(df):
@@ -210,6 +292,7 @@ def save_validation_results(valid, warnings, rejected):
 
         # Get output filenames from configuration
         validation_files = config["validation_files"]
+        
 
         # Save valid records
         valid_path = processed_dir / validation_files["valid"]

@@ -18,5 +18,41 @@
         "valid": "valid_records.csv",
         "warnings": "warning_records.csv",
         "rejected": "rejected_records.csv"
+    },
+
+    "validation": {
+        "required_columns": [
+            "order_id",
+            "order_date",
+            "quantity",
+            "price"
+        ],
+        "warning_columns": [
+            "customer_name",
+            "product",
+            "category",
+            "city"
+        ],
+        "positive_columns": [
+            "quantity",
+            "price"
+        ],
+        "date_columns": [
+            "order_date"
+        ],
+        "unique_columns": [
+            "order_id"
+        ]
     }
+    ,
+"transformation": {
+    "date_columns": [
+        "order_date"
+    ],
+    "calculate_total": true,
+    "quantity_column": "quantity",
+    "price_column": "price",
+    "total_column": "total_amount"
 }
+}
+
