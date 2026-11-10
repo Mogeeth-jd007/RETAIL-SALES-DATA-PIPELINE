@@ -3,28 +3,32 @@ import pandas as pd
 from pathlib import Path
 
 from extract import extract_data
-from config import load_config
+from config import load_config, load_dataset_config
 from logger import get_logger
 
 
 logger = get_logger("VALIDATE")
 
 
-def validate_data(df):
+def get_validation_rules(dataset_name=None):
+
+    dataset_config = load_dataset_config(dataset_name)
+
+    return dataset_config["validation"]
+
+
+def validate_data(df, dataset_name=None):
 
     try:
 
         logger.info("========== DATA QUALITY REPORT ==========")
 
-        # Load validation rules from configuration
-        config = load_config()
-        rules = config["validation"]
+        rules = get_validation_rules(dataset_name)
 
         total_records = len(df)
 
         logger.info("Total records: %s", total_records)
 
-        # Check whether configured columns exist
         configured_columns = (
             rules["required_columns"]
             + rules["warning_columns"]
@@ -43,17 +47,24 @@ def validate_data(df):
                 f"Configured columns missing from dataset: {missing_columns}"
             )
 
-        # 1. Check missing values
+        # 1. Missing values
         logger.info("1. MISSING VALUES")
 
         for column in df.columns:
-            missing = df[column].isna().sum()
-            logger.info("%s: %s missing values", column, missing)
 
-        # 2. Check duplicate values in configured unique columns
+            missing = df[column].isna().sum()
+
+            logger.info(
+                "%s: %s missing values",
+                column,
+                missing
+            )
+
+        # 2. Duplicate checks
         logger.info("2. DUPLICATE CHECKS")
 
         for column in rules["unique_columns"]:
+
             duplicates = (
                 df[column].notna()
                 & df[column].duplicated()
@@ -65,12 +76,14 @@ def validate_data(df):
                 duplicates
             )
 
-        # 3. Check invalid dates
+        # 3. Date validation
         logger.info("3. DATE VALIDATION")
 
         for column in rules["date_columns"]:
+
             dates = pd.to_datetime(
-                df[column], errors="coerce"
+                df[column],
+                errors="coerce"
             )
 
             invalid_dates = dates.isna().sum()
@@ -81,17 +94,17 @@ def validate_data(df):
                 invalid_dates
             )
 
-        # 4. Check invalid numeric values
+        # 4. Numeric validation
         logger.info("4. NUMERIC VALIDATION")
 
         for column in rules["positive_columns"]:
 
             values = pd.to_numeric(
-                df[column], errors="coerce"
+                df[column],
+                errors="coerce"
             )
-            invalid = values.isna().sum()
 
-            
+            invalid = values.isna().sum()
 
             logger.info(
                 "Missing or invalid %s values: %s",
@@ -99,7 +112,6 @@ def validate_data(df):
                 invalid
             )
 
-            # 5. Check negative or zero values
             non_positive = (
                 (values <= 0) & values.notna()
             ).sum()
@@ -117,8 +129,7 @@ def validate_data(df):
         raise
 
 
-
-def classify_records(df):
+def classify_records(df, dataset_name=None):
 
     try:
 
@@ -126,11 +137,8 @@ def classify_records(df):
 
         df = df.copy()
 
-        # Load validation rules from configuration
-        config = load_config()
-        rules = config["validation"]
+        rules = get_validation_rules(dataset_name)
 
-        # Check whether configured columns exist
         configured_columns = (
             rules["required_columns"]
             + rules["warning_columns"]
@@ -151,36 +159,44 @@ def classify_records(df):
 
         # 1. Convert configured date columns
         for column in rules["date_columns"]:
+
             df[column] = pd.to_datetime(
-                df[column], errors="coerce"
+                df[column],
+                errors="coerce"
             )
 
-        # 2. Convert configured positive-value columns
+        # 2. Convert configured numeric columns
         for column in rules["positive_columns"]:
+
             df[column] = pd.to_numeric(
-                df[column], errors="coerce"
+                df[column],
+                errors="coerce"
             )
 
         # 3. Initialize error masks
         critical_errors = pd.Series(False, index=df.index)
         warnings = pd.Series(False, index=df.index)
 
-        # 4. Check required columns
+        # 4. Check required values
         for column in rules["required_columns"]:
+
             critical_errors |= df[column].isna()
 
-        # 5. Check invalid dates
+        # 5. Check dates
         for column in rules["date_columns"]:
+
             critical_errors |= df[column].isna()
 
-        # 6. Check invalid or non-positive numeric values
+        # 6. Check positive numeric values
         for column in rules["positive_columns"]:
+
             critical_errors |= (
                 df[column].isna() | (df[column] <= 0)
             )
 
-        # 7. Check duplicate values in unique columns
+        # 7. Check duplicate identifiers
         for column in rules["unique_columns"]:
+
             duplicates = (
                 df[column].notna()
                 & df[column].duplicated(keep="first")
@@ -190,6 +206,7 @@ def classify_records(df):
 
         # 8. Check warning columns
         for column in rules["warning_columns"]:
+
             warnings |= df[column].isna()
 
         # 9. Assign classification
@@ -205,7 +222,7 @@ def classify_records(df):
             "status"
         ] = "REJECTED"
 
-        # 10. Generate classification summary
+        # 10. Classification summary
         valid_count = (df["status"] == "VALID").sum()
         warning_count = (df["status"] == "WARNING").sum()
         rejected_count = (df["status"] == "REJECTED").sum()
@@ -214,7 +231,7 @@ def classify_records(df):
         logger.info("Warning records: %s", warning_count)
         logger.info("Rejected records: %s", rejected_count)
 
-        # 11. Display a dynamic classification preview
+        # 11. Dynamic preview
         preview_columns = list(dict.fromkeys(
             rules["required_columns"]
             + rules["warning_columns"]
@@ -242,15 +259,12 @@ def classify_records(df):
         raise
 
 
-
 def separate_records(df):
 
     try:
 
         valid_records = df[df["status"] == "VALID"]
-
         warning_records = df[df["status"] == "WARNING"]
-
         rejected_records = df[df["status"] == "REJECTED"]
 
         logger.info("========== RECORD SEPARATION ==========")
@@ -271,43 +285,57 @@ def separate_records(df):
         raise
 
 
-def save_validation_results(valid, warnings, rejected):
+def save_validation_results(
+    valid,
+    warnings,
+    rejected,
+    dataset_name=None
+):
 
     try:
 
         logger.info("Starting validation file saving")
 
-        # Load configuration
         config = load_config()
 
-        # Locate project directory
+        dataset_config = load_dataset_config(dataset_name)
+
         project_dir = Path(__file__).resolve().parent.parent
 
-        # Get output directories from configuration
-        processed_dir = project_dir / config["directories"]["processed"]
-        rejected_dir = project_dir / config["directories"]["rejected"]
+        processed_dir = (
+            project_dir / config["directories"]["processed"]
+        )
+
+        rejected_dir = (
+            project_dir / config["directories"]["rejected"]
+        )
 
         processed_dir.mkdir(parents=True, exist_ok=True)
         rejected_dir.mkdir(parents=True, exist_ok=True)
 
-        # Get output filenames from configuration
-        validation_files = config["validation_files"]
-        
+        validation_files = dataset_config["validation_files"]
 
         # Save valid records
         valid_path = processed_dir / validation_files["valid"]
+
         valid.to_csv(valid_path, index=False)
 
         logger.info("Valid records saved: %s", valid_path)
 
         # Save warning records
-        warning_path = processed_dir / validation_files["warnings"]
+        warning_path = (
+            processed_dir / validation_files["warnings"]
+        )
+
         warnings.to_csv(warning_path, index=False)
 
         logger.info("Warning records saved: %s", warning_path)
 
         # Save rejected records
-        rejected_path = rejected_dir / validation_files["rejected"]
+        rejected_path = (
+            rejected_dir / validation_files["rejected"]
+        )
+
         rejected.to_csv(rejected_path, index=False)
 
         logger.info("Rejected records saved: %s", rejected_path)
@@ -321,23 +349,31 @@ def save_validation_results(valid, warnings, rejected):
 
 if __name__ == "__main__":
 
-    # Extract raw data using configuration
-    sales_data = extract_data()
+    config = load_config()
 
-    # Generate data quality report
-    validate_data(sales_data)
+    dataset_name = config["active_dataset"]
 
-    # Classify records
-    classified_data = classify_records(sales_data)
-
-    # Separate records
-    valid_records, warning_records, rejected_records = separate_records(
-        classified_data
+    sales_data = extract_data(
+        dataset_name=dataset_name
     )
 
-    # Save validation results
+    validate_data(
+        sales_data,
+        dataset_name=dataset_name
+    )
+
+    classified_data = classify_records(
+        sales_data,
+        dataset_name=dataset_name
+    )
+
+    valid_records, warning_records, rejected_records = (
+        separate_records(classified_data)
+    )
+
     save_validation_results(
         valid_records,
         warning_records,
-        rejected_records
+        rejected_records,
+        dataset_name=dataset_name
     )

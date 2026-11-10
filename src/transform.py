@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from extract import extract_data
-from config import load_config
+from config import load_config, load_dataset_config
 from logger import get_logger
 
 
@@ -20,13 +20,9 @@ def standardize_column_names(df):
     for column in df.columns:
 
         column = column.strip().lower()
-
         column = re.sub(r"[\s\-]+", "_", column)
-
         column = re.sub(r"[^a-z0-9_]", "", column)
-
         column = re.sub(r"_+", "_", column)
-
         column = column.strip("_")
 
         standardized_columns.append(column)
@@ -34,6 +30,7 @@ def standardize_column_names(df):
     df.columns = standardized_columns
 
     return df
+
 
 def clean_text_columns(df):
 
@@ -53,12 +50,10 @@ def clean_text_columns(df):
 
         df[column] = df[column].replace("", pd.NA)
 
-        logger.info(
-            "Text column cleaned: %s",
-            column
-        )
+        logger.info("Text column cleaned: %s", column)
 
     return df
+
 
 def detect_data_types(df):
 
@@ -66,31 +61,25 @@ def detect_data_types(df):
 
     for column in df.columns:
 
-        # Skip identifier columns
         if column.endswith("_id"):
             continue
 
-        # Skip columns that are already datetime
         if pd.api.types.is_datetime64_any_dtype(df[column]):
             continue
 
-        # Attempt numeric conversion
         converted_column = pd.to_numeric(
             df[column],
             errors="coerce"
         )
 
-        # Calculate the percentage of successfully converted values
         total_values = df[column].notna().sum()
 
         if total_values == 0:
             continue
 
         numeric_values = converted_column.notna().sum()
-
         numeric_ratio = numeric_values / total_values
 
-        # Convert only if at least 80% of values are numeric
         if numeric_ratio >= 0.80:
 
             df[column] = converted_column
@@ -104,13 +93,13 @@ def detect_data_types(df):
     return df
 
 
-def transform_data(df):
+def transform_data(df, dataset_name=None):
 
     try:
 
         logger.info("Starting data transformation")
 
-        # Work on a copy of the original data
+        # Work on a copy
         df = df.copy()
 
         # 1. Standardize column names
@@ -123,13 +112,12 @@ def transform_data(df):
 
         logger.info("Text columns cleaned")
 
+        # 3. Load selected dataset transformation rules
+        dataset_config = load_dataset_config(dataset_name)
+        rules = dataset_config["transformation"]
 
-
-        # 3. Convert configured date columns
-        config = load_config()
-        rules = config["transformation"]
-
-        for column in rules["date_columns"]:
+        # 4. Convert configured date columns
+        for column in rules.get("date_columns", []):
 
             if column not in df.columns:
                 raise ValueError(
@@ -146,13 +134,13 @@ def transform_data(df):
                 column
             )
 
-        # 4. Automatically detect numeric columns
+        # 5. Detect numeric columns
         df = detect_data_types(df)
 
         logger.info("Data type detection completed successfully")
 
-        # 5. Calculate total sales using configuration
-        if rules["calculate_total"]:
+        # 6. Calculate total only when enabled
+        if rules.get("calculate_total", False):
 
             quantity_column = rules["quantity_column"]
             price_column = rules["price_column"]
@@ -164,6 +152,7 @@ def transform_data(df):
             ]
 
             for column in required_columns:
+
                 if column not in df.columns:
                     raise ValueError(
                         f"Required column for total calculation missing: {column}"
@@ -174,7 +163,7 @@ def transform_data(df):
             )
 
             logger.info(
-                "Total sales calculated using %s and %s",
+                "Total calculated using %s and %s",
                 quantity_column,
                 price_column
             )
@@ -188,32 +177,39 @@ def transform_data(df):
 
 if __name__ == "__main__":
 
-    # Load configuration
     config = load_config()
 
-    # Extract raw data
-    sales_data = extract_data()
+    dataset_name = config["active_dataset"]
 
-    # Transform raw data
-    cleaned_data = transform_data(sales_data)
+    dataset_config = load_dataset_config(dataset_name)
 
-    # Locate project directory
+    raw_data = extract_data(dataset_name=dataset_name)
+
+    cleaned_data = transform_data(
+        raw_data,
+        dataset_name=dataset_name
+    )
+
     project_dir = Path(__file__).resolve().parent.parent
 
-    # Get processed directory from configuration
     output_dir = project_dir / config["directories"]["processed"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get output filename from configuration
-    output_file = output_dir / config["processed_file"]
+    output_file = output_dir / (
+        dataset_name + "_cleaned.csv"
+    )
 
-    # Save transformed data
     cleaned_data.to_csv(output_file, index=False)
 
     print("\nTransformed data:")
     print(cleaned_data)
 
     print("\nTotal records:", len(cleaned_data))
-    print("\nTotal sales:", cleaned_data["total_amount"].sum())
+
+    if "total_amount" in cleaned_data.columns:
+        print(
+            "\nTotal sales:",
+            cleaned_data["total_amount"].sum()
+        )
 
     print("\nProcessed file saved at:", output_file)

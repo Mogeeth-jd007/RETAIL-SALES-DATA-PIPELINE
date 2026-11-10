@@ -1,43 +1,46 @@
-
 import pandas as pd
 from pathlib import Path
 
-from config import load_config
+from config import load_config, load_dataset_config
 from logger import get_logger
-
 
 logger = get_logger("EXTRACT")
 
 
-def extract_data(filename=None):
+def extract_data(filename=None, dataset_name=None):
 
     try:
 
-        # Load project configuration
+        # Load complete project configuration
         config = load_config()
 
-        # Locate the project directory
+        # Load selected dataset configuration
+        dataset_config = load_dataset_config(dataset_name)
+
+        # Locate project directory
         project_dir = Path(__file__).resolve().parent.parent
 
-        # Get filename from configuration
+        # Use configured filename if none is provided
         if filename is None:
-            filename = config["input_file"]
+            filename = dataset_config["input_file"]
 
-        # Get raw data directory from configuration
+        # Locate raw data directory
         raw_directory = project_dir / config["directories"]["raw"]
 
-        # Locate the CSV file
+        # Locate CSV file
         file_path = raw_directory / filename
 
-        logger.info("Starting extraction from: %s", filename)
+        logger.info("Starting extraction")
+        logger.info("Dataset profile: %s", dataset_name or config["active_dataset"])
+        logger.info("Input file: %s", filename)
 
-        # Check whether the file exists
+        # Check whether file exists
         if not file_path.exists():
             raise FileNotFoundError(
                 f"Dataset not found: {file_path}"
             )
 
-        # Read CSV data
+        # Read CSV
         df = pd.read_csv(file_path)
 
         logger.info("Data extracted successfully")
@@ -48,13 +51,3 @@ def extract_data(filename=None):
     except Exception:
         logger.exception("Data extraction failed")
         raise
-
-
-if __name__ == "__main__":
-
-    sales_data = extract_data()
-
-    print("\nFirst 5 records:")
-    print(sales_data.head())
-
-    print("\nTotal records:", len(sales_data))

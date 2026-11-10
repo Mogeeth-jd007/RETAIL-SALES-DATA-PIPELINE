@@ -1,0 +1,11 @@
+student_id,student_name,course,marks,enrollment_date,email,city
+S001,Aditya,Computer Science,85,2024-01-10,aditya@example.com,Chennai
+S002,Priya,Mechanical,78,2023-06-15,priya@example.com,Bangalore
+S003,Rahul,Electrical,92,2022-11-20,,Mumbai
+S004,Anjali,Civil,88,2024-03-12,anjali@example.com,Hyderabad
+S005,Varun,Computer Science,75,2023-09-05,varun@example.com,
+S006,Kavya,Information Technology,95,2022-05-25,kavya@example.com,Delhi
+S007,Manoj,Mechanical,68,2021-12-18,manoj@example.com,Pune
+S008,Ishita,Electrical,0,2024-07-08,ishita@example.com,Chennai
+S009,Dev,Civil,81,2023-02-22,dev@example.com,Kochi
+S010,Neha,Computer Science,89,2024-08-14,neha@example.com,Coimbatore

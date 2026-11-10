@@ -1,4 +1,5 @@
 
+import argparse
 import pandas as pd
 
 from extract import extract_data
@@ -10,52 +11,66 @@ from validate import (
     save_validation_results
 )
 from load import load_data
-from config import load_config
+from config import load_config, load_dataset_config
 from logger import get_logger
-import sys
 
 
-# Initialize logger
 logger = get_logger("MAIN")
 
 
-def run_pipeline():
-
-    logger.info("========== RETAIL SALES ETL PIPELINE STARTED ==========")
+def run_pipeline(dataset_name=None, input_file=None):
 
     try:
 
         # Load project configuration
-        logger.info("Loading project configuration")
-
         config = load_config()
+
+        if dataset_name is None:
+            dataset_name = config["active_dataset"]
+
+        # Validate selected dataset profile
+        dataset_config = load_dataset_config(dataset_name)
+
+        logger.info("========== ETL PIPELINE STARTED ==========")
+        logger.info("Selected dataset: %s", dataset_name)
 
         # STEP 1: EXTRACT
         logger.info("STEP 1: EXTRACT")
 
-        input_file = sys.argv[1] if len(sys.argv) > 1 else config["input_file"]
-        df = extract_data(input_file)
+        df = extract_data(
+            filename=input_file,
+            dataset_name=dataset_name
+        )
 
         logger.info("Extraction completed successfully")
 
         # STEP 2: TRANSFORM
         logger.info("STEP 2: TRANSFORM")
 
-        transformed_df = transform_data(df)
+        transformed_df = transform_data(
+            df,
+            dataset_name=dataset_name
+        )
 
         logger.info("Transformation completed successfully")
 
         # STEP 3: VALIDATE
         logger.info("STEP 3: VALIDATE")
 
-        validate_data(transformed_df)
+        validate_data(
+            transformed_df,
+            dataset_name=dataset_name
+        )
 
         logger.info("Validation completed successfully")
 
         # STEP 4: CLASSIFY
         logger.info("STEP 4: CLASSIFY")
 
-        classified_df = classify_records(transformed_df)
+        classified_df = classify_records(
+            transformed_df,
+            dataset_name=dataset_name
+        )
 
         logger.info("Classification completed successfully")
 
@@ -79,7 +94,8 @@ def run_pipeline():
         save_validation_results(
             valid_records,
             warning_records,
-            rejected_records
+            rejected_records,
+            dataset_name=dataset_name
         )
 
         logger.info("Validation files saved successfully")
@@ -98,17 +114,29 @@ def run_pipeline():
             errors="ignore"
         )
 
-        # Convert dates into SQLite-friendly strings
-        if "order_date" in records_to_load.columns:
-            records_to_load["order_date"] = (
-                records_to_load["order_date"].astype(str)
-            )
+        # Convert configured dates into SQLite-friendly strings
+        date_columns = dataset_config["transformation"].get(
+            "date_columns",
+            []
+        )
 
-        load_data(records_to_load)
+        for column in date_columns:
+
+            if column in records_to_load.columns:
+                records_to_load[column] = (
+                    records_to_load[column].astype(str)
+                )
+
+        load_data(
+            records_to_load,
+            dataset_name=dataset_name
+        )
 
         logger.info("Loading completed successfully")
 
-        logger.info("========== ETL PIPELINE COMPLETED SUCCESSFULLY ==========")
+        logger.info(
+            "========== ETL PIPELINE COMPLETED SUCCESSFULLY =========="
+        )
 
     except Exception:
         logger.exception("ETL PIPELINE FAILED")
@@ -116,4 +144,28 @@ def run_pipeline():
 
 
 if __name__ == "__main__":
-    run_pipeline()
+
+    # Command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Multi-dataset ETL Pipeline"
+    )
+
+    parser.add_argument(
+        "--dataset",
+        choices=["retail", "employee", "student"],
+        default=None,
+        help="Dataset profile to process"
+    )
+
+    parser.add_argument(
+        "--file",
+        default=None,
+        help="Optional CSV filename override"
+    )
+
+    args = parser.parse_args()
+
+    run_pipeline(
+        dataset_name=args.dataset,
+        input_file=args.file
+    )

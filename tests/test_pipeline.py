@@ -1,5 +1,5 @@
+
 import sqlite3
-import sys
 import pandas as pd
 
 import main
@@ -7,7 +7,7 @@ import validate
 import load
 
 
-def test_clean_dataset_pipeline(tmp_path, monkeypatch):
+def setup_test_environment(tmp_path, monkeypatch):
 
     processed_dir = tmp_path / "processed"
     rejected_dir = tmp_path / "rejected"
@@ -16,142 +16,96 @@ def test_clean_dataset_pipeline(tmp_path, monkeypatch):
     processed_dir.mkdir()
     rejected_dir.mkdir()
 
-    config = validate.load_config()
-    test_config = config.copy()
-
-    test_config["directories"] = {
-        "processed": str(processed_dir),
-        "rejected": str(rejected_dir)
-    }
-
-    test_config["database"] = {
-        "file": str(database_file),
-        "table": "test_sales"
-    }
-
+    # Redirect database to a temporary location
     monkeypatch.setattr(
-        main, "load_config", lambda: test_config
+        load,
+        "get_project_path",
+        lambda path: database_file
     )
 
-    monkeypatch.setattr(
-        validate, "load_config", lambda: test_config
-    )
+    # Redirect validation output files
+    def save_test_outputs(
+    valid,
+    warnings,
+    rejected,
+    dataset_name=None
+    ):
 
-    monkeypatch.setattr(
-        load, "load_config", lambda: test_config
-    )
-
-    # Redirect validation output files to temporary folders
-    def save_test_outputs(valid, warnings, rejected):
-
-        files = test_config["validation_files"]
+        files = validate.load_dataset_config(
+            dataset_name
+        )["validation_files"]
 
         valid.to_csv(
-            processed_dir / files["valid"], index=False
+            processed_dir / files["valid"],
+            index=False
         )
 
         warnings.to_csv(
-            processed_dir / files["warnings"], index=False
+            processed_dir / files["warnings"],
+            index=False
         )
 
         rejected.to_csv(
-            rejected_dir / files["rejected"], index=False
+            rejected_dir / files["rejected"],
+            index=False
         )
 
     monkeypatch.setattr(
-        main, "save_validation_results", save_test_outputs
+        main,
+        "save_validation_results",
+        save_test_outputs
     )
 
-    # Select the clean dataset
-    monkeypatch.setattr(
-        sys, "argv", ["main.py", "retail_sales.csv"]
+    return processed_dir, rejected_dir, database_file
+
+
+def test_clean_dataset_pipeline(tmp_path, monkeypatch):
+
+    processed_dir, rejected_dir, database_file = (
+        setup_test_environment(tmp_path, monkeypatch)
     )
 
-    # Run the complete pipeline
-    main.run_pipeline()
+    # Run clean retail pipeline
+    main.run_pipeline(
+        dataset_name="retail",
+        input_file="retail_sales.csv"
+    )
+
+    files = validate.load_dataset_config(
+        "retail"
+    )["validation_files"]
 
     # Verify output files
-    files = test_config["validation_files"]
-
     assert (processed_dir / files["valid"]).exists()
     assert (processed_dir / files["warnings"]).exists()
     assert (rejected_dir / files["rejected"]).exists()
 
     # Verify SQLite records
-    conn = sqlite3.connect(database_file)
+    with sqlite3.connect(database_file) as conn:
 
-    try:
         result = pd.read_sql_query(
-            "SELECT * FROM test_sales", conn
+            "SELECT * FROM retail_sales",
+            conn
         )
-    finally:
-        conn.close()
 
     assert len(result) == 10
 
+
 def test_dirty_dataset_pipeline(tmp_path, monkeypatch):
 
-    processed_dir = tmp_path / "processed"
-    rejected_dir = tmp_path / "rejected"
-    database_file = tmp_path / "test.db"
-
-    processed_dir.mkdir()
-    rejected_dir.mkdir()
-
-    config = validate.load_config()
-    test_config = config.copy()
-
-    test_config["directories"] = {
-        "processed": str(processed_dir),
-        "rejected": str(rejected_dir)
-    }
-
-    test_config["database"] = {
-        "file": str(database_file),
-        "table": "test_sales"
-    }
-
-    monkeypatch.setattr(
-        main, "load_config", lambda: test_config
+    processed_dir, rejected_dir, database_file = (
+        setup_test_environment(tmp_path, monkeypatch)
     )
 
-    monkeypatch.setattr(
-        validate, "load_config", lambda: test_config
+    # Run dirty retail pipeline
+    main.run_pipeline(
+        dataset_name="retail",
+        input_file="retail_sales_test.csv"
     )
 
-    monkeypatch.setattr(
-        load, "load_config", lambda: test_config
-    )
-
-    def save_test_outputs(valid, warnings, rejected):
-
-        files = test_config["validation_files"]
-
-        valid.to_csv(
-            processed_dir / files["valid"], index=False
-        )
-
-        warnings.to_csv(
-            processed_dir / files["warnings"], index=False
-        )
-
-        rejected.to_csv(
-            rejected_dir / files["rejected"], index=False
-        )
-
-    monkeypatch.setattr(
-        main, "save_validation_results", save_test_outputs
-    )
-
-    # Select the dirty dataset
-    monkeypatch.setattr(
-        sys, "argv", ["main.py", "retail_sales_test.csv"]
-    )
-
-    # Run the complete pipeline
-    main.run_pipeline()
-
-    files = test_config["validation_files"]
+    files = validate.load_dataset_config(
+        "retail"
+    )["validation_files"]
 
     valid_df = pd.read_csv(
         processed_dir / files["valid"]
@@ -171,13 +125,47 @@ def test_dirty_dataset_pipeline(tmp_path, monkeypatch):
     assert len(rejected_df) == 7
 
     # Verify SQLite records
-    conn = sqlite3.connect(database_file)
+    with sqlite3.connect(database_file) as conn:
 
-    try:
         result = pd.read_sql_query(
-            "SELECT * FROM test_sales", conn
+            "SELECT * FROM retail_sales",
+            conn
         )
-    finally:
-        conn.close()
 
     assert len(result) == 2
+def test_employee_dataset_pipeline(tmp_path, monkeypatch):
+
+    processed_dir, rejected_dir, database_file = (
+        setup_test_environment(tmp_path, monkeypatch)
+    )
+
+    # Run employee pipeline
+    main.run_pipeline(dataset_name="employee")
+
+    # Verify employee database
+    with sqlite3.connect(database_file) as conn:
+        result = pd.read_sql_query(
+            "SELECT * FROM employees",
+            conn
+        )
+
+    assert len(result) == 9
+
+
+def test_student_dataset_pipeline(tmp_path, monkeypatch):
+
+    processed_dir, rejected_dir, database_file = (
+        setup_test_environment(tmp_path, monkeypatch)
+    )
+
+    # Run student pipeline
+    main.run_pipeline(dataset_name="student")
+
+    # Verify student database
+    with sqlite3.connect(database_file) as conn:
+        result = pd.read_sql_query(
+            "SELECT * FROM students",
+            conn
+        )
+
+    assert len(result) == 9

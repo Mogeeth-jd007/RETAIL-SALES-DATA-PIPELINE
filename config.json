@@ -1,7 +1,6 @@
 
 {
-    "input_file": "retail_sales.csv",
-    "processed_file": "cleaned_retail_sales.csv",
+    "active_dataset": "retail",
 
     "directories": {
         "raw": "data/raw",
@@ -9,50 +8,145 @@
         "rejected": "data/rejected"
     },
 
-    "database": {
-        "file": "data/retail_sales.db",
-        "table": "retail_sales"
-    },
+    "datasets": {
+        "retail": {
+            "input_file": "retail_sales.csv",
 
-    "validation_files": {
-        "valid": "valid_records.csv",
-        "warnings": "warning_records.csv",
-        "rejected": "rejected_records.csv"
-    },
+            "database": {
+                "file": "data/retail_sales.db",
+                "table": "retail_sales"
+            },
 
-    "validation": {
-        "required_columns": [
-            "order_id",
-            "order_date",
-            "quantity",
-            "price"
-        ],
-        "warning_columns": [
-            "customer_name",
-            "product",
-            "category",
-            "city"
-        ],
-        "positive_columns": [
-            "quantity",
-            "price"
-        ],
-        "date_columns": [
-            "order_date"
-        ],
-        "unique_columns": [
-            "order_id"
-        ]
+            "validation_files": {
+                "valid": "retail_valid_records.csv",
+                "warnings": "retail_warning_records.csv",
+                "rejected": "retail_rejected_records.csv"
+            },
+
+            "validation": {
+                "required_columns": [
+                    "order_id",
+                    "order_date",
+                    "quantity",
+                    "price"
+                ],
+                "warning_columns": [
+                    "customer_name",
+                    "product",
+                    "category",
+                    "city"
+                ],
+                "positive_columns": [
+                    "quantity",
+                    "price"
+                ],
+                "date_columns": [
+                    "order_date"
+                ],
+                "unique_columns": [
+                    "order_id"
+                ]
+            },
+
+            "transformation": {
+                "date_columns": [
+                    "order_date"
+                ],
+                "calculate_total": true,
+                "quantity_column": "quantity",
+                "price_column": "price",
+                "total_column": "total_amount"
+            }
+        },
+
+        "employee": {
+            "input_file": "employees.csv",
+
+            "database": {
+                "file": "data/employee_data.db",
+                "table": "employees"
+            },
+
+            "validation_files": {
+                "valid": "employee_valid_records.csv",
+                "warnings": "employee_warning_records.csv",
+                "rejected": "employee_rejected_records.csv"
+            },
+
+            "validation": {
+                "required_columns": [
+                    "employee_id",
+                    "employee_name",
+                    "department",
+                    "salary",
+                    "joining_date"
+                ],
+                "warning_columns": [
+                    "email",
+                    "city"
+                ],
+                "positive_columns": [
+                    "salary"
+                ],
+                "date_columns": [
+                    "joining_date"
+                ],
+                "unique_columns": [
+                    "employee_id"
+                ]
+            },
+
+            "transformation": {
+                "date_columns": [
+                    "joining_date"
+                ],
+                "calculate_total": false
+            }
+        },
+
+        "student": {
+            "input_file": "students.csv",
+
+            "database": {
+                "file": "data/student_data.db",
+                "table": "students"
+            },
+
+            "validation_files": {
+                "valid": "student_valid_records.csv",
+                "warnings": "student_warning_records.csv",
+                "rejected": "student_rejected_records.csv"
+            },
+
+            "validation": {
+                "required_columns": [
+                    "student_id",
+                    "student_name",
+                    "course",
+                    "marks",
+                    "enrollment_date"
+                ],
+                "warning_columns": [
+                    "email",
+                    "city"
+                ],
+                "positive_columns": [
+                    "marks"
+                ],
+                "date_columns": [
+                    "enrollment_date"
+                ],
+                "unique_columns": [
+                    "student_id"
+                ]
+            },
+
+            "transformation": {
+                "date_columns": [
+                    "enrollment_date"
+                ],
+                "calculate_total": false
+            }
+        }
     }
-    ,
-"transformation": {
-    "date_columns": [
-        "order_date"
-    ],
-    "calculate_total": true,
-    "quantity_column": "quantity",
-    "price_column": "price",
-    "total_column": "total_amount"
 }
-}
-

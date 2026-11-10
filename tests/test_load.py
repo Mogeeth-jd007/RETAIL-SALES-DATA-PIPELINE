@@ -1,9 +1,11 @@
 import sqlite3
 import pandas as pd
+
 from load import load_data
 
 
 def test_load_data_to_sqlite(tmp_path, monkeypatch):
+
     database_file = tmp_path / "test_retail_sales.db"
 
     test_config = {
@@ -13,7 +15,13 @@ def test_load_data_to_sqlite(tmp_path, monkeypatch):
         }
     }
 
-    monkeypatch.setattr("load.load_config", lambda: test_config)
+    # Mock dataset configuration
+    monkeypatch.setattr(
+        "load.load_dataset_config",
+        lambda dataset_name=None: test_config
+    )
+
+    # Mock database path
     monkeypatch.setattr(
         "load.get_project_path",
         lambda path: database_file
@@ -25,16 +33,16 @@ def test_load_data_to_sqlite(tmp_path, monkeypatch):
         "price": [100, 200]
     })
 
-    load_data(df)
+    # Execute database loading
+    load_data(df, dataset_name="retail")
 
-    conn = sqlite3.connect(database_file)
+    # Verify database contents
+    with sqlite3.connect(database_file) as conn:
 
-    result = pd.read_sql_query(
-        "SELECT * FROM test_sales",
-        conn
-    )
-
-    conn.close()
+        result = pd.read_sql_query(
+            "SELECT * FROM test_sales",
+            conn
+        )
 
     assert len(result) == 2
     assert result["order_id"].tolist() == [1001, 1002]

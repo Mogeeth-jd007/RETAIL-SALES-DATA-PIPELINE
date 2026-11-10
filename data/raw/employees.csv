@@ -1,0 +1,11 @@
+employee_id,employee_name,department,salary,joining_date,email,city
+E001,Aarav,Engineering,55000,2024-01-15,aarav@example.com,Chennai
+E002,Diya,HR,42000,2023-06-20,diya@example.com,Bangalore
+E003,Rohan,Finance,48000,2022-11-10,,Mumbai
+E004,Meera,Engineering,62000,2024-03-05,meera@example.com,Hyderabad
+E005,Karan,Marketing,39000,2023-09-12,karan@example.com,
+E006,Ananya,Sales,45000,2022-05-18,ananya@example.com,Delhi
+E007,Vikram,Operations,51000,2021-12-01,vikram@example.com,Pune
+E008,Sara,HR,0,2024-07-22,sara@example.com,Chennai
+E009,Arjun,Engineering,58000,2023-02-14,arjun@example.com,Kochi
+E010,Nisha,Finance,47000,2024-08-30,nisha@example.com,Coimbatore
