@@ -1,4 +1,4 @@
-\# Retail Sales ETL Pipeline
+\Retail Sales ETL Pipeline
 
 
 
@@ -6,7 +6,7 @@ A Python-based, configuration-driven ETL pipeline that extracts CSV datasets, tr
 
 
 
-\## Project Overview
+\Project Overview
 
 
 
@@ -26,7 +26,7 @@ Each dataset has its own configuration profile, validation rules, output files, 
 
 
 
-\## Technology Stack
+\Technology Stack
 
 
 
@@ -44,7 +44,7 @@ Each dataset has its own configuration profile, validation rules, output files, 
 
 
 
-\## Project Structure
+\Project Structure
 
 
 
@@ -104,7 +104,7 @@ retail-sales-data-pipeline/
 
 
 
-\## ETL Workflow
+\ETL Workflow
 
 
 
@@ -144,7 +144,7 @@ retail-sales-data-pipeline/
 
 
 
-\## Supported Datasets
+\Supported Datasets
 
 
 
@@ -160,7 +160,7 @@ retail-sales-data-pipeline/
 
 
 
-\## Running the Pipeline
+\Running the Pipeline
 
 
 
@@ -212,7 +212,7 @@ python src/main.py --dataset student
 
 
 
-\## SQL Analytics
+\SQL Analytics
 
 
 
@@ -220,7 +220,7 @@ Three SQL scripts provide analytical queries.
 
 
 
-\### Retail Sales
+\Retail Sales
 
 \- Total sales revenue
 
@@ -238,7 +238,7 @@ Three SQL scripts provide analytical queries.
 
 
 
-\### Employee
+\Employee
 
 \- Total employees
 
@@ -250,7 +250,7 @@ Three SQL scripts provide analytical queries.
 
 
 
-\### Student
+\Student
 
 \- Total students
 
@@ -262,7 +262,7 @@ Three SQL scripts provide analytical queries.
 
 
 
-\## Automated Testing
+\Automated Testing
 
 
 
@@ -288,7 +288,7 @@ The latest verified test suite contains 16 passing tests.
 
 
 
-\## Logging
+\Logging
 
 
 
@@ -296,7 +296,7 @@ Centralized logging records pipeline execution, extraction, transformation, vali
 
 
 
-\## Skills Demonstrated
+\Skills Demonstrated
 
 
 
@@ -318,7 +318,7 @@ Centralized logging records pipeline execution, extraction, transformation, vali
 
 
 
-\## Future Improvements
+\Future Improvements
 
 
 
