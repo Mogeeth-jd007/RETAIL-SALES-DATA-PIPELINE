@@ -1,8 +1,8 @@
-\Retail Sales ETL Pipeline
+\Automated ETL Pipeline
 
-
-
-A Python-based, configuration-driven ETL pipeline that extracts CSV datasets, transforms and validates records, classifies data quality, and loads eligible records into SQLite databases.
+An automated and universal ETL pipeline designed to
+extract, clean, transform, validate, and load different
+CSV datasets with minimal manual intervention.
 
 
 
