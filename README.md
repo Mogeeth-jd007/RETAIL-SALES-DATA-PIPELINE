@@ -20,6 +20,8 @@ This project demonstrates an end-to-end ETL workflow using three datasets:
 
 \- Students
 
+\- Custom CSV datasets
+
 
 
 Each dataset has its own configuration profile, validation rules, output files, and SQLite database.
